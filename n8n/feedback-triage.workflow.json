@@ -1,0 +1,89 @@
+{
+  "name": "FounderDesk - Feedback Triage",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "Talk to the founders",
+        "formDescription": "Feedback, bugs, partnership ideas or applications.",
+        "formFields": {
+          "values": [
+            { "fieldLabel": "Name", "requiredField": true },
+            { "fieldLabel": "Email", "fieldType": "email", "requiredField": true },
+            { "fieldLabel": "Company" },
+            { "fieldLabel": "Message", "fieldType": "textarea", "requiredField": true }
+          ]
+        }
+      },
+      "name": "On form submission",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.2,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.FOUNDERDESK_API_URL }}/api/submissions",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [{ "name": "x-api-key", "value": "={{ $env.FOUNDERDESK_API_KEY }}" }] },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ source: 'n8n-form', name: $json.Name, email: $json.Email, company: $json.Company, message: $json.Message }) }}",
+        "options": { "timeout": 60000 }
+      },
+      "name": "FounderDesk API: create + triage",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [260, 0],
+      "retryOnFail": true,
+      "maxTries": 3
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "typeValidation": "loose" },
+          "combinator": "or",
+          "conditions": [
+            { "leftValue": "={{ $json.triage.priority }}", "rightValue": "urgent", "operator": { "type": "string", "operation": "equals" } },
+            { "leftValue": "={{ $json.triage.priority }}", "rightValue": "high", "operator": { "type": "string", "operation": "equals" } }
+          ]
+        }
+      },
+      "name": "High priority?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [520, 0]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $env.FOUNDER_EMAIL }}",
+        "subject": "=[{{ $json.triage.priority.toUpperCase() }}] {{ $json.triage.category }}: {{ $json.name }}",
+        "message": "={{ $json.triage.summary }}\n\nSuggested action: {{ $json.triage.suggestedAction }}\n\nFrom: {{ $json.name }} <{{ $json.email }}> ({{ $json.company }})"
+      },
+      "name": "Email founder (urgent)",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [780, -100],
+      "notes": "Attach your Gmail credential. Swap for Slack/Telegram if preferred."
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $env.FOUNDER_EMAIL }}",
+        "subject": "=New feedback: {{ $json.triage.category }} ({{ $json.triage.priority }})",
+        "message": "={{ $json.triage.summary }}"
+      },
+      "name": "Email digest item (normal)",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [780, 100]
+    }
+  ],
+  "connections": {
+    "On form submission": { "main": [[{ "node": "FounderDesk API: create + triage", "type": "main", "index": 0 }]] },
+    "FounderDesk API: create + triage": { "main": [[{ "node": "High priority?", "type": "main", "index": 0 }]] },
+    "High priority?": { "main": [
+      [{ "node": "Email founder (urgent)", "type": "main", "index": 0 }],
+      [{ "node": "Email digest item (normal)", "type": "main", "index": 0 }]
+    ] }
+  },
+  "settings": { "executionOrder": "v1" }
+}
