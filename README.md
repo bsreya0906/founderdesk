@@ -2,6 +2,8 @@
 
 AI-powered feedback triage dashboard for startup founders. Form submissions are summarized, categorized and prioritized by an LLM, then shown in a Next.js dashboard.
 
+**Live demo:** https://founderdesk-triage.netlify.app (demo mode with sample data and keyword-based triage)
+
 **Stack:** Next.js, TypeScript, Node.js/Express, MongoDB, n8n, Claude or OpenAI API
 
 ## How it works
@@ -77,7 +79,9 @@ Import `n8n/feedback-triage.workflow.json`, set `FOUNDERDESK_API_URL`, `FOUNDERD
 
 ## Deploy
 
+If `BACKEND_URL` is not set, the dashboard runs in demo mode with built-in sample data, which is how the live demo works. Set `BACKEND_URL` and `API_KEY` to use the real API.
+
 1. Create a MongoDB Atlas database and copy its connection string.
 2. Deploy `backend/` to a Node host (Render, Railway or Fly). Build with `npm run build`, start with `npm start`. Set `MONGODB_URI`, `API_KEY`, `CORS_ORIGIN`, `LLM_PROVIDER` and the LLM key.
-3. Deploy `frontend/` to Vercel with the root directory set to `frontend`. Set `BACKEND_URL` to the backend URL and the same `API_KEY`.
+3. Deploy `frontend/` to Vercel or Netlify with the root directory set to `frontend`. Set `BACKEND_URL` to the backend URL and the same `API_KEY`.
 4. Set the backend's `CORS_ORIGIN` to the Vercel URL and point the n8n variables at the backend.
